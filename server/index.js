@@ -4,6 +4,9 @@ import bodyParser from 'body-parser';
 import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +18,35 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../dist')));
+
+// S3 / Railway Bucket configuration
+const s3Client = new S3Client({
+  region: process.env.RAILWAY_BUCKET_REGION || process.env.AWS_REGION || 'us-east-1',
+  endpoint: process.env.RAILWAY_BUCKET_ENDPOINT || process.env.AWS_ENDPOINT_URL_S3,
+  credentials: {
+    accessKeyId: process.env.RAILWAY_BUCKET_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.RAILWAY_BUCKET_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+  forcePathStyle: true, // required for S3-compatible endpoints
+});
+
+const BUCKET_NAME = process.env.RAILWAY_BUCKET_NAME || process.env.AWS_BUCKET_NAME || '';
+
+// Multer — store uploads in memory so we can stream directly to S3
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only jpg, jpeg, png, gif, and webp are allowed.'));
+    }
+  },
+});
 
 // PostgreSQL connection
 const pool = new pg.Pool({
@@ -149,6 +181,52 @@ const sendToWebhook = async (product, action) => {
 };
 
 // API Routes
+
+// Upload product image to S3-compatible bucket
+app.post('/api/upload', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    if (!BUCKET_NAME) {
+      return res.status(500).json({ error: 'Storage bucket is not configured. Please set RAILWAY_BUCKET_NAME.' });
+    }
+
+    // Build a unique, URL-safe filename
+    const ext = req.file.originalname.split('.').pop().toLowerCase();
+    const uniqueName = `products/${crypto.randomUUID()}.${ext}`;
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: uniqueName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      // Make the object publicly readable
+      ACL: 'public-read',
+    }));
+
+    // Construct the public URL
+    const endpoint = process.env.RAILWAY_BUCKET_ENDPOINT || process.env.AWS_ENDPOINT_URL_S3;
+    let publicUrl;
+    if (endpoint) {
+      // S3-compatible endpoint (Railway bucket, MinIO, etc.)
+      publicUrl = `${endpoint.replace(/\/$/, '')}/${BUCKET_NAME}/${uniqueName}`;
+    } else {
+      // Standard AWS S3
+      const region = process.env.RAILWAY_BUCKET_REGION || process.env.AWS_REGION || 'us-east-1';
+      publicUrl = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${uniqueName}`;
+    }
+
+    res.json({ url: publicUrl });
+  } catch (error) {
+    console.error('Upload error:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5 MB.' });
+    }
+    res.status(500).json({ error: error.message || 'Upload failed' });
+  }
+});
 
 // Get all products
 app.get('/api/products', async (req, res) => {
