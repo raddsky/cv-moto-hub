@@ -37,21 +37,21 @@ function Cart() {
               </div>
               <div className="flex flex-col items-end justify-between">
                 <button 
-                  onClick={() => removeFromCart(item.cart_id)}
+                  onClick={() => removeFromCart(item.id)}
                   className="text-red-500 hover:text-red-700"
                 >
                   <Trash2 size={20} />
                 </button>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => updateCartItem(item.cart_id, Math.max(1, item.quantity - 1))}
+                    onClick={() => updateCartItem(item.id, Math.max(1, item.quantity - 1))}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="w-8 text-center font-semibold">{item.quantity}</span>
                   <button 
-                    onClick={() => updateCartItem(item.cart_id, Math.min(item.stock, item.quantity + 1))}
+                    onClick={() => updateCartItem(item.id, Math.min(item.stock, item.quantity + 1))}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     <Plus size={16} />
