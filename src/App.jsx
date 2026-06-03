@@ -20,7 +20,7 @@ function CartProvider({ children }) {
 
   const fetchCart = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/cart/${sessionId}`)
+      const response = await fetch(`/api/cart/${sessionId}`)
       const data = await response.json()
       setCartItems(data)
     } catch (error) {
@@ -30,7 +30,7 @@ function CartProvider({ children }) {
 
   const addToCart = async (productId, quantity = 1) => {
     try {
-      await fetch('http://localhost:3000/api/cart', {
+      await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId, product_id: productId, quantity })
@@ -43,7 +43,7 @@ function CartProvider({ children }) {
 
   const updateCartItem = async (cartId, quantity) => {
     try {
-      await fetch(`http://localhost:3000/api/cart/${cartId}`, {
+      await fetch(`/api/cart/${cartId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity })
@@ -56,7 +56,7 @@ function CartProvider({ children }) {
 
   const removeFromCart = async (cartId) => {
     try {
-      await fetch(`http://localhost:3000/api/cart/${cartId}`, { method: 'DELETE' })
+      await fetch(`/api/cart/${cartId}`, { method: 'DELETE' })
       fetchCart()
     } catch (error) {
       console.error('Error removing from cart:', error)
@@ -65,7 +65,7 @@ function CartProvider({ children }) {
 
   const clearCart = async () => {
     try {
-      await fetch(`http://localhost:3000/api/cart/session/${sessionId}`, { method: 'DELETE' })
+      await fetch(`/api/cart/session/${sessionId}`, { method: 'DELETE' })
       setCartItems([])
     } catch (error) {
       console.error('Error clearing cart:', error)

@@ -50,7 +50,7 @@ function Home() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/products')
+      const response = await fetch('/api/products')
       const data = await response.json()
       setProducts(data.slice(0, 8))
     } catch (error) {
@@ -60,7 +60,7 @@ function Home() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/categories')
+      const response = await fetch('/api/categories')
       const data = await response.json()
       setCategories(data)
     } catch (error) {

@@ -26,7 +26,7 @@ function Admin() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/products')
+      const response = await fetch('/api/products')
       const data = await response.json()
       setProducts(data)
     } catch (error) {
@@ -36,7 +36,7 @@ function Admin() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/orders')
+      const response = await fetch('/api/orders')
       const data = await response.json()
       setOrders(data)
     } catch (error) {
@@ -46,7 +46,7 @@ function Admin() {
 
   const fetchWebhookConfig = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/config/webhook')
+      const response = await fetch('/api/config/webhook')
       const data = await response.json()
       setWebhookUrl(data.webhookUrl || '')
     } catch (error) {
@@ -56,7 +56,7 @@ function Admin() {
 
   const saveWebhookConfig = async () => {
     try {
-      await fetch('http://localhost:3000/api/config/webhook', {
+      await fetch('/api/config/webhook', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webhookUrl })
@@ -79,13 +79,13 @@ function Admin() {
 
     try {
       if (editingProduct) {
-        await fetch(`http://localhost:3000/api/products/${editingProduct.id}`, {
+        await fetch(`/api/products/${editingProduct.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productData)
         })
       } else {
-        await fetch('http://localhost:3000/api/products', {
+        await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productData)
@@ -117,7 +117,7 @@ function Admin() {
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
-        await fetch(`http://localhost:3000/api/products/${id}`, { method: 'DELETE' })
+        await fetch(`/api/products/${id}`, { method: 'DELETE' })
         fetchProducts()
       } catch (error) {
         console.error('Error deleting product:', error)
