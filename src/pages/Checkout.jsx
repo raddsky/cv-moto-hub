@@ -28,7 +28,7 @@ function Checkout() {
     const totalAmount = cartTotal + (cartTotal >= 100 ? 0 : 10) + cartTotal * 0.1
 
     try {
-      const response = await fetch('http://localhost:3000/api/orders', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
