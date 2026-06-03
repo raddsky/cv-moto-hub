@@ -27,8 +27,12 @@ function Cart() {
         <div className="lg:col-span-2 space-y-4">
           {cartItems.map((item) => (
             <div key={item.id} className="bg-white rounded-xl p-4 shadow-md flex gap-4">
-              <div className="bg-gray-100 w-24 h-24 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-4xl">{item.image}</span>
+              <div className="bg-gray-100 w-24 h-24 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {item.image && item.image.startsWith('http') ? (
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl">{item.image}</span>
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{item.name}</h3>
