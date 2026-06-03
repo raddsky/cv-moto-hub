@@ -27,8 +27,12 @@ function Cart() {
         <div className="lg:col-span-2 space-y-4">
           {cartItems.map((item) => (
             <div key={item.id} className="bg-white rounded-xl p-4 shadow-md flex gap-4">
-              <div className="bg-gray-100 w-24 h-24 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-4xl">{item.image}</span>
+              <div className="bg-gray-100 w-24 h-24 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {item.image && item.image.startsWith('http') ? (
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl">{item.image}</span>
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{item.name}</h3>
@@ -37,21 +41,21 @@ function Cart() {
               </div>
               <div className="flex flex-col items-end justify-between">
                 <button 
-                  onClick={() => removeFromCart(item.cart_id)}
+                  onClick={() => removeFromCart(item.id)}
                   className="text-red-500 hover:text-red-700"
                 >
                   <Trash2 size={20} />
                 </button>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => updateCartItem(item.cart_id, Math.max(1, item.quantity - 1))}
+                    onClick={() => updateCartItem(item.id, Math.max(1, item.quantity - 1))}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="w-8 text-center font-semibold">{item.quantity}</span>
                   <button 
-                    onClick={() => updateCartItem(item.cart_id, Math.min(item.stock, item.quantity + 1))}
+                    onClick={() => updateCartItem(item.id, Math.min(item.stock, item.quantity + 1))}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     <Plus size={16} />

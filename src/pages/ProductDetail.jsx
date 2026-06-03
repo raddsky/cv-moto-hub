@@ -42,8 +42,16 @@ function ProductDetail() {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Product Image */}
-        <div className="bg-gray-100 rounded-2xl p-12 flex items-center justify-center">
-          <span className="text-[200px]">{product.image}</span>
+        <div className="bg-gray-100 rounded-2xl overflow-hidden flex items-center justify-center min-h-[320px]">
+          {product.image && product.image.startsWith('http') ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-[200px] p-12">{product.image}</span>
+          )}
         </div>
 
         {/* Product Info */}

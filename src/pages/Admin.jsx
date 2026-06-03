@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Package, DollarSign, ShoppingCart, Users, Settings, Link as LinkIcon, Save } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Edit, Trash2, Package, DollarSign, ShoppingCart, Users, Settings, Link as LinkIcon, Save, Upload, X } from 'lucide-react'
 
 function Admin() {
   const [products, setProducts] = useState([])
@@ -8,6 +8,11 @@ function Admin() {
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -68,10 +73,65 @@ function Admin() {
     }
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setUploadError(null)
+
+    // Client-side validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Invalid file type. Only jpg, jpeg, png, gif, and webp are allowed.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File too large. Maximum size is 5 MB.')
+      return
+    }
+
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const clearImageSelection = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setUploadError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setUploadError(null)
+
+    let imageValue = formData.image
+
+    // If a new file was selected, upload it first
+    if (imageFile) {
+      setUploading(true)
+      try {
+        const fd = new FormData()
+        fd.append('image', imageFile)
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+        const uploadData = await uploadRes.json()
+        if (!uploadRes.ok) {
+          setUploadError(uploadData.error || 'Image upload failed')
+          setUploading(false)
+          return
+        }
+        imageValue = uploadData.url
+      } catch (err) {
+        setUploadError('Image upload failed. Please try again.')
+        setUploading(false)
+        return
+      }
+      setUploading(false)
+    }
+
     const productData = {
       ...formData,
+      image: imageValue,
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock),
       rating: parseFloat(formData.rating)
@@ -94,6 +154,9 @@ function Admin() {
       fetchProducts()
       setShowModal(false)
       setEditingProduct(null)
+      setImageFile(null)
+      setImagePreview(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       setFormData({ name: '', description: '', price: '', category: '', image: '', stock: '', rating: '' })
     } catch (error) {
       console.error('Error saving product:', error)
@@ -111,6 +174,11 @@ function Admin() {
       stock: product.stock,
       rating: product.rating
     })
+    // Show existing image as preview (URL or emoji)
+    setImageFile(null)
+    setImagePreview(null)
+    setUploadError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
     setShowModal(true)
   }
 
@@ -209,7 +277,7 @@ function Admin() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Product Inventory</h2>
               <button
-                onClick={() => { setEditingProduct(null); setFormData({ name: '', description: '', price: '', category: '', image: '', stock: '', rating: '' }); setShowModal(true) }}
+                onClick={() => { setEditingProduct(null); setFormData({ name: '', description: '', price: '', category: '', image: '', stock: '', rating: '' }); setImageFile(null); setImagePreview(null); setUploadError(null); if (fileInputRef.current) fileInputRef.current.value = ''; setShowModal(true) }}
                 className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
               >
                 <Plus size={20} />
@@ -233,7 +301,11 @@ function Admin() {
                     <tr key={product.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">{product.image}</span>
+                          {product.image && product.image.startsWith('http') ? (
+                            <img src={product.image} alt={product.name} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
+                          ) : (
+                            <span className="text-2xl">{product.image}</span>
+                          )}
                           <span className="font-semibold">{product.name}</span>
                         </div>
                       </td>
@@ -419,15 +491,67 @@ function Admin() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Image (Emoji)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="e.g., 🏍️"
-                  />
+                  <label className="block text-sm font-semibold mb-2">Product Image</label>
+
+                  {/* Current / preview image */}
+                  {(imagePreview || formData.image) && (
+                    <div className="mb-3 relative inline-block">
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                        />
+                      ) : formData.image && formData.image.startsWith('http') ? (
+                        <img
+                          src={formData.image}
+                          alt="Current"
+                          className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200 text-4xl">
+                          {formData.image}
+                        </div>
+                      )}
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          onClick={clearImageSelection}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* File picker */}
+                  <label className="flex items-center gap-2 cursor-pointer w-full px-4 py-2 border border-dashed border-gray-400 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition text-sm text-gray-600">
+                    <Upload size={16} className="text-orange-500 flex-shrink-0" />
+                    <span>{imageFile ? imageFile.name : 'Click to upload image (jpg, png, gif, webp — max 5 MB)'}</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Fallback emoji / URL text input */}
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={formData.image}
+                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                      placeholder="Or enter an emoji (e.g. 🏍️) / image URL"
+                    />
+                  </div>
+
+                  {uploadError && (
+                    <p className="mt-1 text-sm text-red-600">{uploadError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">Rating (0-5)</label>
@@ -453,9 +577,20 @@ function Admin() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold"
+                  disabled={uploading}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
                 >
-                  {editingProduct ? 'Update' : 'Add'}
+                  {uploading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                      Uploading…
+                    </>
+                  ) : (
+                    editingProduct ? 'Update' : 'Add'
+                  )}
                 </button>
               </div>
             </form>

@@ -196,7 +196,15 @@ function Home() {
                     <div className="absolute top-2 right-2 bg-orange-600 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition">
                       New
                     </div>
-                    <span className="text-7xl group-hover:scale-110 transition-transform duration-300 inline-block">{product.image}</span>
+                    {product.image && product.image.startsWith('http') ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <span className="text-7xl group-hover:scale-110 transition-transform duration-300 inline-block">{product.image}</span>
+                    )}
                   </div>
                 </Link>
                 <div className="p-6">
