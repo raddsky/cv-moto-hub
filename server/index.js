@@ -401,6 +401,12 @@ app.post('/api/admin/seed', async (req, res) => {
   }
 });
 
+// SPA fallback — serve index.html for any non-API route so React Router
+// can handle client-side navigation (e.g. /admin, /cart, /checkout).
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
