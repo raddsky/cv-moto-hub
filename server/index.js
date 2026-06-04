@@ -187,25 +187,14 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       return res.status(500).json({ error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.' });
     }
 
-    // Upload to Cloudinary using upload_stream
-    const uploadPromise = new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'cv-moto-hub/products',
-          resource_type: 'image'
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
+    // Convert buffer to base64
+    const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
-      // Convert buffer to stream and pipe to Cloudinary
-      const bufferStream = Readable.from(req.file.buffer);
-      bufferStream.pipe(uploadStream);
+    // Upload to Cloudinary using base64
+    const result = await cloudinary.uploader.upload(base64, {
+      resource_type: 'image'
     });
 
-    const result = await uploadPromise;
     res.json({ url: result.secure_url });
   } catch (error) {
     console.error('Upload error:', error);
