@@ -192,9 +192,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'cv-moto-hub/products',
-          resource_type: 'image',
-          quality: 'auto',
-          fetch_format: 'auto'
+          resource_type: 'image'
         },
         (error, result) => {
           if (error) reject(error);
