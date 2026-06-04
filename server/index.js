@@ -5,8 +5,8 @@ import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import crypto from 'crypto';
+import { v2 as cloudinary } from 'cloudinary';
+import { Readable } from 'stream';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,18 +19,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// S3 / Railway Bucket configuration
-const s3Client = new S3Client({
-  region: process.env.RAILWAY_BUCKET_REGION || process.env.AWS_REGION || 'us-east-1',
-  endpoint: process.env.RAILWAY_BUCKET_ENDPOINT || process.env.AWS_ENDPOINT_URL_S3,
-  credentials: {
-    accessKeyId: process.env.RAILWAY_BUCKET_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.RAILWAY_BUCKET_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-  forcePathStyle: true, // required for S3-compatible endpoints
+// Cloudinary configuration (FREE tier: 25GB storage, 25GB bandwidth/month)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
+  api_key: process.env.CLOUDINARY_API_KEY || '',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '',
 });
-
-const BUCKET_NAME = process.env.RAILWAY_BUCKET_NAME || process.env.AWS_BUCKET_NAME || '';
 
 // Multer — store uploads in memory so we can stream directly to S3
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -182,43 +176,42 @@ const sendToWebhook = async (product, action) => {
 
 // API Routes
 
-// Upload product image to S3-compatible bucket
+// Upload product image to Cloudinary (FREE)
 app.post('/api/upload', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file provided' });
     }
 
-    if (!BUCKET_NAME) {
-      return res.status(500).json({ error: 'Storage bucket is not configured. Please set RAILWAY_BUCKET_NAME.' });
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      return res.status(500).json({ error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.' });
     }
 
-    // Build a unique, URL-safe filename
-    const ext = req.file.originalname.split('.').pop().toLowerCase();
-    const uniqueName = `products/${crypto.randomUUID()}.${ext}`;
+    // Upload to Cloudinary using upload_stream
+    const uploadPromise = new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'cv-moto-hub/products',
+          resource_type: 'auto',
+          transformation: [
+            { width: 800, height: 800, crop: 'limit' },
+            { quality: 'auto' },
+            { fetch_format: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
 
-    await s3Client.send(new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: uniqueName,
-      Body: req.file.buffer,
-      ContentType: req.file.mimetype,
-      // Make the object publicly readable
-      ACL: 'public-read',
-    }));
+      // Convert buffer to stream and pipe to Cloudinary
+      const bufferStream = Readable.from(req.file.buffer);
+      bufferStream.pipe(uploadStream);
+    });
 
-    // Construct the public URL
-    const endpoint = process.env.RAILWAY_BUCKET_ENDPOINT || process.env.AWS_ENDPOINT_URL_S3;
-    let publicUrl;
-    if (endpoint) {
-      // S3-compatible endpoint (Railway bucket, MinIO, etc.)
-      publicUrl = `${endpoint.replace(/\/$/, '')}/${BUCKET_NAME}/${uniqueName}`;
-    } else {
-      // Standard AWS S3
-      const region = process.env.RAILWAY_BUCKET_REGION || process.env.AWS_REGION || 'us-east-1';
-      publicUrl = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${uniqueName}`;
-    }
-
-    res.json({ url: publicUrl });
+    const result = await uploadPromise;
+    res.json({ url: result.secure_url });
   } catch (error) {
     console.error('Upload error:', error);
     if (error.code === 'LIMIT_FILE_SIZE') {
