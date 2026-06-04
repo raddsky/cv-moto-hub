@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCart } from '../App'
 import { ChevronLeft, ChevronRight, Star, Zap, Shield, Truck, HeadphonesIcon } from 'lucide-react'
 
 function Home() {
   const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [currentSlide, setCurrentSlide] = useState(0)
   const { addToCart } = useCart()
+  const [searchParams] = useSearchParams()
 
   const slides = [
     {
@@ -48,14 +50,40 @@ function Home() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    filterProducts()
+  }, [searchParams, allProducts])
+
   const fetchProducts = async () => {
     try {
       const response = await fetch('/api/products')
       const data = await response.json()
+      setAllProducts(data)
       setProducts(data.slice(0, 8))
     } catch (error) {
       console.error('Error fetching products:', error)
     }
+  }
+
+  const filterProducts = () => {
+    const searchQuery = searchParams.get('search')
+    const categoryFilter = searchParams.get('category')
+    
+    let filtered = [...allProducts]
+    
+    if (searchQuery) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+    
+    if (categoryFilter) {
+      filtered = filtered.filter(product => product.category === categoryFilter)
+    }
+    
+    setProducts(filtered.slice(0, 8))
   }
 
   const fetchCategories = async () => {

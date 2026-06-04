@@ -1,6 +1,6 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, createContext, useContext } from 'react'
-import { Menu, X, ShoppingCart, Search, User, Heart, Phone, Mail, MapPin, Plus, Trash2, Minus, CreditCard, CheckCircle } from 'lucide-react'
+import { Menu, X, ShoppingCart, Search, User, Heart, Phone, Mail, MapPin, Plus, Trash2, Minus, CreditCard, CheckCircle, ChevronDown } from 'lucide-react'
 import Home from './pages/Home'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -90,8 +90,33 @@ function useCart() {
 
 function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categories, setCategories] = useState([])
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const { cartCount } = useCart()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      const data = await response.json()
+      setCategories(data)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/?search=${encodeURIComponent(searchQuery)}`)
+    }
+  }
 
   return (
     <>
@@ -121,14 +146,16 @@ function Header() {
             </Link>
 
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
-              <div className="relative w-full">
+              <form onSubmit={handleSearch} className="relative w-full">
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search parts, accessories..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-              </div>
+              </form>
             </div>
 
             <div className="flex items-center gap-4">
@@ -146,10 +173,16 @@ function Header() {
           </div>
 
           <div className="md:hidden mt-4">
-            <div className="relative">
-              <input type="text" placeholder="Search parts..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search parts..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
               <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-            </div>
+            </form>
           </div>
 
           <nav className={`md:flex mt-4 md:mt-0 ${mobileMenuOpen ? 'block' : 'hidden'}`}>
@@ -157,6 +190,36 @@ function Header() {
               <li><Link to="/" className={`block ${location.pathname === '/' ? 'text-orange-600 font-semibold' : 'text-gray-700 hover:text-orange-600'}`}>Home</Link></li>
               <li><Link to="/cart" className={`block ${location.pathname === '/cart' ? 'text-orange-600 font-semibold' : 'text-gray-700 hover:text-orange-600'}`}>Cart</Link></li>
               <li><Link to="/admin" className={`block ${location.pathname === '/admin' ? 'text-orange-600 font-semibold' : 'text-gray-700 hover:text-orange-600'}`}>Admin</Link></li>
+              <li className="relative">
+                <button
+                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                  className="flex items-center gap-1 text-gray-700 hover:text-orange-600"
+                >
+                  Categories
+                  <ChevronDown size={16} />
+                </button>
+                {showCategoryDropdown && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px] z-50">
+                    <Link
+                      to="/"
+                      onClick={() => setShowCategoryDropdown(false)}
+                      className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600"
+                    >
+                      All Products
+                    </Link>
+                    {categories.map((category) => (
+                      <Link
+                        key={category}
+                        to={`/?category=${encodeURIComponent(category)}`}
+                        onClick={() => setShowCategoryDropdown(false)}
+                        className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600"
+                      >
+                        {category}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </li>
             </ul>
           </nav>
         </div>
