@@ -59,7 +59,7 @@ function ProductDetail() {
           <span className="text-orange-600 font-semibold text-sm">{product.category}</span>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-4">{product.name}</h1>
           
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-6">
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} size={20} className={i < Math.floor(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
@@ -68,9 +68,13 @@ function ProductDetail() {
             <span className="text-gray-600">({product.rating} rating)</span>
           </div>
 
-          <p className="text-gray-600 mb-6 leading-relaxed">{product.description}</p>
-
           <div className="text-4xl font-bold text-gray-900 mb-6">${product.price}</div>
+
+          {/* Product Description - More Prominent */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Product Description</h3>
+            <p className="text-gray-700 leading-relaxed">{product.description}</p>
+          </div>
 
           <div className="flex items-center gap-4 mb-6">
             <div className="flex items-center border border-gray-300 rounded-lg">

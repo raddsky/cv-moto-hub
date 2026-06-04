@@ -190,9 +190,11 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     // Convert buffer to base64
     const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
-    // Upload to Cloudinary using base64
+    // Upload to Cloudinary using base64 with explicit options
     const result = await cloudinary.uploader.upload(base64, {
-      resource_type: 'image'
+      resource_type: 'image',
+      public_id: `cv-moto-hub/${Date.now()}`,
+      overwrite: true
     });
 
     res.json({ url: result.secure_url });
